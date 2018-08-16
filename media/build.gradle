@@ -20,15 +20,15 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'kotlin-android-extensions'
 
 android {
-    compileSdkVersion 27
+    compileSdkVersion 28
 
     defaultConfig {
-        minSdkVersion 19
-        targetSdkVersion 27
+        minSdkVersion 21
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
 
-        testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
     buildTypes {
@@ -43,9 +43,7 @@ android {
 dependencies {
     api "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
-    api "com.android.support:support-core-ui:$support_lib_version"
-    api "com.android.support:support-fragment:$support_lib_version"
-    api "com.android.support:support-media-compat:$support_lib_version"
+    api 'androidx.media:media:1.0.0-rc01'
 
     api "com.google.code.gson:gson:$gson_version"
 
@@ -59,5 +57,5 @@ dependencies {
     kapt "com.github.bumptech.glide:compiler:$glide_version"
 
     // Testing
-    androidTestImplementation "com.android.support.test:runner:$test_runner_version"
+    androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
 }
