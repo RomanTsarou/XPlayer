@@ -27,7 +27,7 @@
         style="@style/MediaItemList"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layoutManager="LinearLayoutManager"
+        app:layoutManager="android.support.v7.widget.LinearLayoutManager"
         tools:context="com.example.android.uamp.MediaItemFragment"
         tools:listitem="@layout/fragment_mediaitem" />
 
