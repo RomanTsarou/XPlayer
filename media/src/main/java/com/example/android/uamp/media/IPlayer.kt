@@ -7,14 +7,14 @@ interface IPlayer {
 
     val state: State
     val currentMedia: MediaMetadataCompat?
-    var playList: List<MediaMetadataCompat>?
+    var playList: List<Player.Item>?
     fun play()
     fun start(mediaId: String)
     fun pause()
     fun stop()
     fun next()
     fun prev()
-    fun tooglePlayPause()
+    fun togglePlayPause()
     fun seekTo(millis: Long)
 
 }
