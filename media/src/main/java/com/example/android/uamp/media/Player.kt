@@ -2,7 +2,6 @@ package com.example.android.uamp.media
 
 import android.app.Application
 import android.content.ComponentName
-import android.graphics.Bitmap
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
@@ -19,36 +18,43 @@ import com.example.android.uamp.media.library.AbstractMusicSource
 import com.example.android.uamp.media.library.STATE_INITIALIZED
 import com.example.android.uamp.media.library.STATE_INITIALIZING
 
-class Player private constructor(val app: Application) : IPlayer {
+class Player private constructor(private val app: Application) : IPlayer {
     private val mediaBrowserConnectionCallback = MediaBrowserConnectionCallback()
     private val mediaBrowser = MediaBrowserCompat(
-        context,
+        application,
         ComponentName(app, MusicService::class.java),
         mediaBrowserConnectionCallback, null
     )
         .apply { connect() }
-    private lateinit var mediaController: MediaControllerCompat
-    private val _stateLiveData = MutableLiveData<State>().apply { postValue(State.PREPARING) }
-    val stateLiveData: LiveData<State> get() = _stateLiveData
-    private var _playList: List<Item>? = null
+    private var mediaController: MediaControllerCompat? = null
+    private val _liveDataPlayerState = MutableLiveData<State>().apply { postValue(State.PREPARING) }
+    override val liveDataPlayerState: LiveData<State> get() = _liveDataPlayerState
     internal val mediaSource = MusicSource0()
-    override val state: State get() = _stateLiveData.value ?: State.PREPARING
+    private val state: State get() = _liveDataPlayerState.value ?: State.PREPARING
+    private val _liveDataPlayNow = MutableLiveData<IPlayer.Item>()
+    override val liveDataPlayNow: LiveData<IPlayer.Item> get() = _liveDataPlayNow
+    private val _liveDataPlayList = MutableLiveData<List<IPlayer.Item>>()
+    override val liveDataPlayList: LiveData<List<IPlayer.Item>> get() = _liveDataPlayList
+    override val trackDuration: Long get() = mediaController?.metadata?.duration ?: -1L
+    override val currentPosition: Long get() = mediaController?.playbackState?.position ?: -1L
 
-    override val currentMedia: MediaMetadataCompat?
-        get() = TODO("not implemented") //To change initializer of created properties use File | Settings | File Templates.
-    override var playList: List<Item>?
-        get() = _playList
+    override var playList: List<IPlayer.Item>? = null
         set(value) {
-            _playList = value
+            field = value
+            if (value?.contains(_liveDataPlayNow.value) == true) {
+            } else {
+                _liveDataPlayNow.postValue(value?.getOrNull(0))
+            }
             mediaSource.catalog = (value ?: emptyList()).mapIndexed { index, item ->
                 item.toMediaMetadata(index.toLong(), value!!.size.toLong())
             }
+            _liveDataPlayList.postValue(value)
         }
 
     override fun play() {
         controls {
             if (state == State.STOP) {
-                val mediaId = _playList?.getOrNull(0)?.id
+                val mediaId = playList?.getOrNull(0)?.id
                 if (mediaId != null) {
                     start(mediaId)
                 } else {
@@ -104,11 +110,9 @@ class Player private constructor(val app: Application) : IPlayer {
     }
 
     private fun controls(body: MediaControllerCompat.TransportControls.() -> Unit) {
-        if (::mediaController.isInitialized) {
-            body(mediaController.transportControls)
-        } else {
-            Log.w("Player", "mediaController not Initialized")
-        }
+        mediaController?.also {
+            body(it.transportControls)
+        } ?: Log.w("Player", "mediaController not Initialized")
     }
 
     private inner class MediaBrowserConnectionCallback : MediaBrowserCompat.ConnectionCallback() {
@@ -122,28 +126,28 @@ class Player private constructor(val app: Application) : IPlayer {
                 registerCallback(MediaControllerCallback())
             }
 
-            _stateLiveData.postValue(State.STOP)
+            _liveDataPlayerState.postValue(State.STOP)
         }
 
         /**
          * Invoked when the client is disconnected from the media browser.
          */
         override fun onConnectionSuspended() {
-            _stateLiveData.postValue(State.ERROR)
+            _liveDataPlayerState.postValue(State.ERROR)
         }
 
         /**
          * Invoked when the connection to the media browser failed.
          */
         override fun onConnectionFailed() {
-            _stateLiveData.postValue(State.ERROR)
+            _liveDataPlayerState.postValue(State.ERROR)
         }
     }
 
     private inner class MediaControllerCallback : MediaControllerCompat.Callback() {
 
         override fun onPlaybackStateChanged(state: PlaybackStateCompat) {
-            Log.i("rom", "onPlaybackStateChanged: $state")
+            Log.i("rom", "onPlaybackStateChanged: ${state.position}")
             val s = when (state.state) {
                 PlaybackStateCompat.STATE_ERROR -> State.ERROR
                 PlaybackStateCompat.STATE_PAUSED -> State.PAUSE
@@ -151,16 +155,35 @@ class Player private constructor(val app: Application) : IPlayer {
                 PlaybackStateCompat.STATE_STOPPED, PlaybackStateCompat.STATE_NONE -> State.STOP
                 else -> null
             }
-            s?.takeIf { it != _stateLiveData.value }?.also {
-                _stateLiveData.postValue(it)
+            s?.takeIf { it != _liveDataPlayerState.value }?.also {
+                _liveDataPlayerState.postValue(it)
             }
 
 //            playbackState.postValue(state ?: EMPTY_PLAYBACK_STATE)
         }
 
         override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
-            Log.i("rom", "onMetadataChanged: ${metadata?.duration}")
-//            nowPlaying.postValue(metadata ?: NOTHING_PLAYING)
+            Log.i("rom", "onMetadataChanged: ${metadata?.let {
+                mapOf(
+                    "year" to it.year,
+                    "date" to it.date,
+                    "albumArtist" to it.albumArtist,
+                    "album" to it.album,
+                    "author" to it.author,
+                    "compilation" to it.compilation,
+                    "composer" to it.composer,
+                    "displayDescription" to it.displayDescription,
+                    "displaySubtitle" to it.displaySubtitle,
+                    "genre" to it.genre,
+                    "writer" to it.writer,
+                    "duration" to it.duration,
+                    "fullDescription" to it.fullDescription
+                )
+            }}")
+            val item = _liveDataPlayList.value?.find { it.id == metadata?.description?.mediaId }
+            if (item != null && item != _liveDataPlayNow.value) {
+                _liveDataPlayNow.postValue(item)
+            }
         }
 
         override fun onQueueChanged(queue: MutableList<MediaSessionCompat.QueueItem>?) {
@@ -180,18 +203,16 @@ class Player private constructor(val app: Application) : IPlayer {
     }
 
     companion object {
-        private lateinit var context: Application
+        private lateinit var application: Application
         fun init(app: Application) {
-//            if (!::context.isInitialized) {
-            context = app
-//            }
+            application = app
         }
 
-        val instance by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Player(context) }
+        val instance by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { Player(application) }
     }
 
     internal inner class MusicSource0 : AbstractMusicSource() {
-        internal var catalog: List<MediaMetadataCompat> = emptyList()
+        internal var catalog: List<MediaMetadataCompat>? = null
             set(value) {
                 field = value
                 state = STATE_INITIALIZED
@@ -200,28 +221,13 @@ class Player private constructor(val app: Application) : IPlayer {
         init {
             state = STATE_INITIALIZING
         }
-//
-//            UpdateCatalogTask(Glide.with(context)) { mediaItems ->
-//                catalog = mediaItems
-//                state = STATE_INITIALIZED
-//            }.execute(source)
-//        }
 
-        override fun iterator(): Iterator<MediaMetadataCompat> = catalog.iterator()
+        override fun iterator(): Iterator<MediaMetadataCompat> = (catalog ?: emptyList()).iterator()
     }
 
-    class Item(
-        val id: String,
-        val title: String,
-        val artist: String,
-        val mediaUri: String,
-        val imageUri: String,
-        val album: String,
-        val image: Bitmap?
-    )
 }
 
-private fun Player.Item.toMediaMetadata(
+private fun IPlayer.Item.toMediaMetadata(
     trackNumber: Long,
     totalTrackCount: Long
 ): MediaMetadataCompat {
@@ -244,7 +250,7 @@ private fun Player.Item.toMediaMetadata(
         it.displayDescription = album
         it.displayIconUri = imageUri
 
-        it.albumArt = image
+        it.albumArt = albumArt
 
         // Add downloadStatus to force the creation of an "extras" bundle in the resulting
         // MediaMetadataCompat object. This is needed to send accurate metadata to the

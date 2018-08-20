@@ -23,7 +23,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
@@ -79,8 +78,8 @@ class MusicService : MediaBrowserServiceCompat() {
 
     private var isForegroundService = false
 
-    private val remoteJsonSource: Uri =
-            Uri.parse("https://storage.googleapis.com/uamp/catalog.json")
+//    private val remoteJsonSource: Uri =
+//            Uri.parse("https://storage.googleapis.com/uamp/catalog.json")
 
     private val audioAttributes = AudioAttributesCompat.Builder()
             .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
