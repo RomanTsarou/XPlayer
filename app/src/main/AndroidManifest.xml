@@ -34,6 +34,7 @@
         <!--</activity>-->
         <activity
             android:name=".Main2Activity"
+            android:launchMode="singleTask"
             android:label="Test Player">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

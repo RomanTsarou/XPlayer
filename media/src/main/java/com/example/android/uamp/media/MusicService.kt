@@ -31,14 +31,13 @@ import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import androidx.media.AudioAttributesCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.audiofocus.AudioFocusExoPlayerDecorator
-import com.example.android.uamp.media.extensions.flag
+import com.example.android.uamp.media.extensions.stateName
 import com.example.android.uamp.media.library.BrowseTree
-import com.example.android.uamp.media.library.MusicSource
-import com.example.android.uamp.media.library.UAMP_BROWSABLE_ROOT
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
@@ -64,17 +63,17 @@ class MusicService : MediaBrowserServiceCompat() {
     private lateinit var becomingNoisyReceiver: BecomingNoisyReceiver
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var notificationBuilder: NotificationBuilder
-    private lateinit var mediaSource: MusicSource
+    //    private lateinit var mediaSource: MusicSource
     private lateinit var mediaSessionConnector: MediaSessionConnector
 
-    /**
-     * This must be `by lazy` because the source won't initially be ready.
-     * See [MusicService.onLoadChildren] to see where it's accessed (and first
-     * constructed).
-     */
-    private val browseTree: BrowseTree by lazy {
-        BrowseTree(mediaSource)
-    }
+//    /**
+//     * This must be `by lazy` because the source won't initially be ready.
+//     * See [MusicService.onLoadChildren] to see where it's accessed (and first
+//     * constructed).
+//     */
+//    private val browseTree: BrowseTree by lazy {
+//        BrowseTree(mediaSource)
+//    }
 
     private var isForegroundService = false
 
@@ -82,18 +81,22 @@ class MusicService : MediaBrowserServiceCompat() {
 //            Uri.parse("https://storage.googleapis.com/uamp/catalog.json")
 
     private val audioAttributes = AudioAttributesCompat.Builder()
-            .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
-            .setUsage(AudioAttributesCompat.USAGE_MEDIA)
-            .build()
+        .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
+        .setUsage(AudioAttributesCompat.USAGE_MEDIA)
+        .build()
 
     // Wrap a SimpleExoPlayer with a decorator to handle audio focus for us.
     private val exoPlayer: ExoPlayer by lazy {
         val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        AudioFocusExoPlayerDecorator(audioAttributes,
-                audioManager,
-                ExoPlayerFactory.newSimpleInstance(DefaultRenderersFactory(this),
-                        DefaultTrackSelector(),
-                        DefaultLoadControl()))
+        AudioFocusExoPlayerDecorator(
+            audioAttributes,
+            audioManager,
+            ExoPlayerFactory.newSimpleInstance(
+                DefaultRenderersFactory(this),
+                DefaultTrackSelector(),
+                DefaultLoadControl()
+            )
+        )
     }
 
     override fun onCreate() {
@@ -105,10 +108,10 @@ class MusicService : MediaBrowserServiceCompat() {
 
         // Create a new MediaSession.
         mediaSession = MediaSessionCompat(this, "MusicService")
-                .apply {
-                    setSessionActivity(sessionActivityPendingIntent)
-                    isActive = true
-                }
+            .apply {
+                setSessionActivity(sessionActivityPendingIntent)
+                isActive = true
+            }
 
         /**
          * In order for [MediaBrowserCompat.ConnectionCallback.onConnected] to be called,
@@ -134,19 +137,21 @@ class MusicService : MediaBrowserServiceCompat() {
                 BecomingNoisyReceiver(context = this, sessionToken = mediaSession.sessionToken)
 
 //        mediaSource = JsonSource(context = this, source = remoteJsonSource)
-        mediaSource = com.example.android.uamp.media.Player.instance.mediaSource
+//        mediaSource = com.example.android.uamp.media.Player.instance.mediaSource
 
         // ExoPlayer will manage the MediaSession for us.
         mediaSessionConnector = MediaSessionConnector(mediaSession).also {
             // Produces DataSource instances through which media data is loaded.
             val dataSourceFactory = DefaultDataSourceFactory(
-                    this, Util.getUserAgent(this, UAMP_USER_AGENT), null)
+                this, Util.getUserAgent(this, UAMP_USER_AGENT), null
+            )
 
             // Create the PlaybackPreparer of the media session connector.
             val playbackPreparer = UampPlaybackPreparer(
-                    mediaSource,
-                    exoPlayer,
-                    dataSourceFactory)
+//                mediaSource,
+                exoPlayer,
+                dataSourceFactory
+            )
 
             it.setPlayer(exoPlayer, playbackPreparer)
             it.setQueueNavigator(UampQueueNavigator(mediaSession))
@@ -171,10 +176,13 @@ class MusicService : MediaBrowserServiceCompat() {
      *
      * TODO: Allow different roots based on which app is attempting to connect.
      */
-    override fun onGetRoot(clientPackageName: String,
-                           clientUid: Int,
-                           rootHints: Bundle?): MediaBrowserServiceCompat.BrowserRoot? {
-        return BrowserRoot(UAMP_BROWSABLE_ROOT, null)
+    override fun onGetRoot(
+        clientPackageName: String,
+        clientUid: Int,
+        rootHints: Bundle?
+    ): MediaBrowserServiceCompat.BrowserRoot? {
+        return BrowserRoot("Player", null)
+//        return BrowserRoot(UAMP_BROWSABLE_ROOT, null)
     }
 
     /**
@@ -183,30 +191,36 @@ class MusicService : MediaBrowserServiceCompat() {
      * how this is build/more details about the relationships.
      */
     override fun onLoadChildren(
-            parentMediaId: String,
-            result: MediaBrowserServiceCompat.Result<List<MediaItem>>) {
-
+        parentMediaId: String,
+        result: MediaBrowserServiceCompat.Result<List<MediaItem>>
+    ) {
+        Log.d("rom", "onLoadChildren: $parentMediaId")
         // If the media source is ready, the results will be set synchronously here.
-        val resultsSent = mediaSource.whenReady { successfullyInitialized ->
-            if (successfullyInitialized) {
-                val children = browseTree[parentMediaId]?.map { item ->
-                    MediaItem(item.description, item.flag)
-                }
-                result.sendResult(children)
-            } else {
-                result.sendError(null)
-            }
-        }
-
-        // If the results are not ready, the service must "detach" the results before
-        // the method returns. After the source is ready, the lambda above will run,
-        // and the caller will be notified that the results are ready.
-        //
-        // See [MediaItemFragmentViewModel.subscriptionCallback] for how this is passed to the
-        // UI/displayed in the [RecyclerView].
-        if (!resultsSent) {
-            result.detach()
-        }
+//        val resultsSent = mediaSource.whenReady { successfullyInitialized ->
+//            if (successfullyInitialized) {
+////                val children = browseTree[parentMediaId]?.map { item ->
+////                    MediaItem(item.description, item.flag)
+////                }
+//                val children = mediaSource.map { item ->
+//                    MediaItem(item.description, item.flag)
+//                }
+        val children = com.example.android.uamp.media.Player.instance.mediaItems
+        result.sendResult(children)
+        Log.d("rom", "sendResult: $children")
+//            } else {
+//                result.sendError(null)
+//            }
+//        }
+//
+//        // If the results are not ready, the service must "detach" the results before
+//        // the method returns. After the source is ready, the lambda above will run,
+//        // and the caller will be notified that the results are ready.
+//        //
+//        // See [MediaItemFragmentViewModel.subscriptionCallback] for how this is passed to the
+//        // UI/displayed in the [RecyclerView].
+//        if (!resultsSent) {
+//            result.detach()
+//        }
     }
 
     /**
@@ -240,6 +254,7 @@ class MusicService : MediaBrowserServiceCompat() {
     private inner class MediaControllerCallback : MediaControllerCompat.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
             val updatedState = state?.state ?: return
+            Log.v("rom", "onPlaybackStateChanged: " + state.stateName)
 
             // Skip building a notification when state is "none".
             val notification = if (updatedState != PlaybackStateCompat.STATE_NONE) {
@@ -268,6 +283,8 @@ class MusicService : MediaBrowserServiceCompat() {
                             removeNowPlayingNotification()
                         }
                         isForegroundService = false
+                    } else if (updatedState == PlaybackStateCompat.STATE_NONE) {
+                        removeNowPlayingNotification()
                     }
                 }
             }
@@ -280,21 +297,22 @@ class MusicService : MediaBrowserServiceCompat() {
  * extension to call [MediaSessionCompat.setMetadata].
  */
 private class UampQueueNavigator(
-        mediaSession: MediaSessionCompat
+    mediaSession: MediaSessionCompat
 ) : TimelineQueueNavigator(mediaSession) {
     private val window = Timeline.Window()
     override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat =
-            player.currentTimeline
-                    .getWindow(windowIndex, window, true).tag as MediaDescriptionCompat
+        player.currentTimeline
+            .getWindow(windowIndex, window, true).tag as MediaDescriptionCompat
 }
 
 /**
  * Helper class for listening for when headphones are unplugged (or the audio
  * will otherwise cause playback to become "noisy").
  */
-private class BecomingNoisyReceiver(private val context: Context,
-                                    sessionToken: MediaSessionCompat.Token)
-    : BroadcastReceiver() {
+private class BecomingNoisyReceiver(
+    private val context: Context,
+    sessionToken: MediaSessionCompat.Token
+) : BroadcastReceiver() {
 
     private val noisyIntentFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
     private val controller = MediaControllerCompat(context, sessionToken)
