@@ -28,6 +28,7 @@ import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaDescriptionCompat
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -36,7 +37,6 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.media.AudioAttributesCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.audiofocus.AudioFocusExoPlayerDecorator
-import com.example.android.uamp.media.extensions.stateName
 import com.example.android.uamp.media.library.BrowseTree
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.Player
@@ -204,9 +204,9 @@ class MusicService : MediaBrowserServiceCompat() {
 //                val children = mediaSource.map { item ->
 //                    MediaItem(item.description, item.flag)
 //                }
-        val children = com.example.android.uamp.media.Player.instance.mediaItems
-        result.sendResult(children)
-        Log.d("rom", "sendResult: $children")
+//        val children = com.example.android.uamp.media.Player.instance.mediaItems
+//        result.sendResult(children)
+//        Log.d("rom", "sendResult: $children")
 //            } else {
 //                result.sendError(null)
 //            }
@@ -252,9 +252,19 @@ class MusicService : MediaBrowserServiceCompat() {
      * - Calls [Service.startForeground] and [Service.stopForeground].
      */
     private inner class MediaControllerCallback : MediaControllerCompat.Callback() {
+        override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
+            mediaController.playbackState?.let { updateNotification(it) }
+        }
+
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
-            val updatedState = state?.state ?: return
-            Log.v("rom", "onPlaybackStateChanged: " + state.stateName)
+            state?.let { updateNotification(it) }
+        }
+
+        private fun updateNotification(state: PlaybackStateCompat) {
+            val updatedState = state.state
+            if (mediaController.metadata == null) {
+                return
+            }
 
             // Skip building a notification when state is "none".
             val notification = if (updatedState != PlaybackStateCompat.STATE_NONE) {

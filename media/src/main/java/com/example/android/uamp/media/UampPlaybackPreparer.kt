@@ -19,12 +19,13 @@ package com.example.android.uamp.media
 import android.net.Uri
 import android.os.Bundle
 import android.os.ResultReceiver
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
-import com.example.android.uamp.media.extensions.id
-import com.example.android.uamp.media.extensions.toMediaSource
+import com.example.android.uamp.media.extensions.*
 import com.example.android.uamp.media.library.AbstractMusicSource
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.Player
@@ -68,7 +69,8 @@ class UampPlaybackPreparer(
         Log.v("rom", "onPrepareFromMediaId: $mediaId")
 //        musicSource.whenReady {
         val metadataList =
-            com.example.android.uamp.media.Player.instance.mediaMetadataList ?: emptyList()
+            com.example.android.uamp.media.Player.playList?.map { it.toMediaMetadata() }
+                    ?: emptyList()
         val itemToPlay: MediaMetadataCompat? = metadataList.find { item ->
             item.id == mediaId
         }
@@ -84,7 +86,7 @@ class UampPlaybackPreparer(
             // user actually wants to hear plays first.
             val initialWindowIndex = metadataList.indexOf(itemToPlay)
             val seekTo = if (extras?.getBoolean("needSeekTo") == true)
-                com.example.android.uamp.media.Player.instance.currentPosition
+                com.example.android.uamp.media.Player.currentPosition
             else 0
             exoPlayer.prepare(mediaSource)
             exoPlayer.seekTo(initialWindowIndex, seekTo)
@@ -138,3 +140,33 @@ class UampPlaybackPreparer(
 }
 
 private const val TAG = "MediaSessionHelper"
+
+private fun IPlayer.Item.toMediaMetadata(
+): MediaMetadataCompat {
+    return MediaMetadataCompat.Builder().also {
+        it.id = id
+        it.title = title
+        it.artist = artist
+        it.album = album
+//        it.duration = durationMs
+//        it.genre = jsonMusic.genre
+        it.mediaUri = mediaUri
+        it.albumArtUri = imageUri
+//        it.trackNumber = trackNumber
+//        it.trackCount = totalTrackCount
+        it.flag = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+
+        // To make things easier for *displaying* these, set the display properties as well.
+        it.displayTitle = title
+        it.displaySubtitle = artist
+        it.displayDescription = album
+        it.displayIconUri = imageUri
+
+        it.albumArt = albumArt
+
+        // Add downloadStatus to force the creation of an "extras" bundle in the resulting
+        // MediaMetadataCompat object. This is needed to send accurate metadata to the
+        // media session during updates.
+        it.downloadStatus = MediaDescriptionCompat.STATUS_NOT_DOWNLOADED
+    }.build()
+}

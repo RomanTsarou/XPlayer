@@ -1,6 +1,5 @@
 package com.example.android.uamp
 
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.AsyncTask
 import android.os.Bundle
@@ -20,7 +19,7 @@ class Main2Activity : AppCompatActivity() {
     private lateinit var counter: CountDownTimer
     private val player by lazy {
         Player.init(application)
-        Player.instance
+        Player
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,7 +80,8 @@ class Main2Activity : AppCompatActivity() {
                         "Artist$index",
                         "Album$index",
                         uri2.toString(),
-                        BitmapFactory.decodeFile(uri2.path)
+                        null
+//                        BitmapFactory.decodeFile(uri2.path)
                     )
                 }
                 Log.v("rom", "player.playList: ${player.playList}")
