@@ -145,6 +145,7 @@ private class PlayerImpl(private val app: Application) : IPlayer {
         when (state) {
             State.PLAY -> pause()
             State.PAUSE, State.STOP -> play()
+            else -> Unit
         }
     }
 

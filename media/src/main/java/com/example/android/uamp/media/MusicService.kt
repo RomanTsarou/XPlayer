@@ -37,7 +37,6 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.media.AudioAttributesCompat
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.audiofocus.AudioFocusExoPlayerDecorator
-import com.example.android.uamp.media.library.BrowseTree
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector

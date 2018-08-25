@@ -33,9 +33,9 @@ android {
             targetCompatibility JavaVersion.VERSION_1_8
         }
     }
-//    dataBinding {
-//        enabled = true
-//    }
+    dataBinding {
+        enabled = true
+    }
     buildTypes {
         release {
             minifyEnabled false
