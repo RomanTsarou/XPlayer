@@ -13,9 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+plugins {
+    id "com.github.dcendents.android-maven" version "2.1"
+}
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+
+group = 'com.github.RomanTsarou'
+version = '0.0.1'
 
 android {
     compileSdkVersion 28
@@ -52,3 +57,28 @@ dependencies {
     // Testing
     androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
 }
+
+// build a jar with source files
+task sourcesJar(type: Jar) {
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    failOnError  false
+    source = android.sourceSets.main.java.sourceFiles
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    classpath += configurations.compile
+}
+
+// build a jar with javadoc
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
