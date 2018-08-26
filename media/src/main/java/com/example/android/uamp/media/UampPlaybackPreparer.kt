@@ -48,9 +48,10 @@ class UampPlaybackPreparer(
      */
     override fun getSupportedPrepareActions(): Long =
         PlaybackStateCompat.ACTION_PREPARE_FROM_MEDIA_ID or
-                PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
-                PlaybackStateCompat.ACTION_PREPARE_FROM_SEARCH or
-                PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+//    or
+//                PlaybackStateCompat.ACTION_PREPARE_FROM_SEARCH or
+//                PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
 
     override fun onPrepare() = Unit
 
@@ -140,7 +141,7 @@ class UampPlaybackPreparer(
 
 private const val TAG = "MediaSessionHelper"
 
-private fun IPlayer.Item.toMediaMetadata(
+private fun IPlayer.Track.toMediaMetadata(
 ): MediaMetadataCompat {
     return MediaMetadataCompat.Builder().also {
         it.id = id

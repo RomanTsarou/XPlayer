@@ -7,11 +7,11 @@ interface IPlayer {
     enum class State { PLAY, PAUSE, STOP, PREPARING, ERROR }
 
     val liveDataPlayerState: LiveData<State>
-    val liveDataPlayNow: LiveData<Item>
-    val liveDataPlayList: LiveData<List<Item>>
+    val liveDataPlayNow: LiveData<Track>
+    val liveDataPlayList: LiveData<List<Track>>
     val trackDuration: Long
     val currentPosition: Long
-    var playList: List<Item>?
+    var playList: List<Track>?
     fun play()
     fun start(mediaId: String)
     fun pause()
@@ -21,7 +21,7 @@ interface IPlayer {
     fun togglePlayPause()
     fun seekTo(millis: Long)
 
-    data class Item(
+    data class Track @JvmOverloads constructor(
         val id: String,
         val mediaUri: String,
         val title: String? = null,

@@ -102,8 +102,13 @@ class MusicService : MediaBrowserServiceCompat() {
         super.onCreate()
 
         // Build a PendingIntent that can be used to launch the UI.
-        val sessionIntent = packageManager?.getLaunchIntentForPackage(packageName)
-        val sessionActivityPendingIntent = PendingIntent.getActivity(this, 0, sessionIntent, 0)
+        val sessionIntent = packageManager?.getLaunchIntentForPackage(packageName)?.apply {
+            //https://stackoverflow.com/questions/12074980/bring-application-to-front-after-user-clicks-on-home-button
+            `package` = null
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+        }
+        val sessionActivityPendingIntent =
+            sessionIntent?.let { PendingIntent.getActivity(this, 0, it, 0) }
 
         // Create a new MediaSession.
         mediaSession = MediaSessionCompat(this, "MusicService")

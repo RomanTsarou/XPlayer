@@ -1,28 +1,30 @@
 package com.example.android.uamp.media
 
-import android.app.Application
+import android.annotation.SuppressLint
 import android.content.ComponentName
+import android.content.Context
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
-import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.media.MediaBrowserServiceCompat
 import com.example.android.uamp.media.IPlayer.State
-import com.example.android.uamp.media.extensions.*
+import com.example.android.uamp.media.extensions.duration
 
+@SuppressLint("StaticFieldLeak")
 object Player : IPlayer {
-    private lateinit var application: Application
+    private lateinit var applicationContext: Context
     private val playerImpl: IPlayer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        PlayerImpl(application)
+        PlayerImpl(applicationContext)
     }
 
-    fun init(app: Application) {
-        application = app
+    @JvmStatic
+    fun init(context: Context) {
+        applicationContext = context.applicationContext
     }
 
     override val liveDataPlayerState get() = playerImpl.liveDataPlayerState
@@ -46,11 +48,11 @@ object Player : IPlayer {
     override fun seekTo(millis: Long) = playerImpl.seekTo(millis)
 }
 
-private class PlayerImpl(private val app: Application) : IPlayer {
+private class PlayerImpl(private val appContext: Context) : IPlayer {
     private val mediaBrowserConnectionCallback = MediaBrowserConnectionCallback()
     private val mediaBrowser = MediaBrowserCompat(
-        app,
-        ComponentName(app, MusicService::class.java),
+        appContext,
+        ComponentName(appContext, MusicService::class.java),
         mediaBrowserConnectionCallback, null
     )
         .apply { connect() }
@@ -58,22 +60,20 @@ private class PlayerImpl(private val app: Application) : IPlayer {
     private val _liveDataPlayerState = MutableLiveData<State>().apply { postValue(State.PREPARING) }
     override val liveDataPlayerState: LiveData<State> get() = _liveDataPlayerState
     private val state: State get() = _liveDataPlayerState.value ?: State.PREPARING
-    private val _liveDataPlayNow = MutableLiveData<IPlayer.Item>()
-    override val liveDataPlayNow: LiveData<IPlayer.Item> get() = _liveDataPlayNow
-    private val _liveDataPlayList = MutableLiveData<List<IPlayer.Item>>()
-    override val liveDataPlayList: LiveData<List<IPlayer.Item>> get() = _liveDataPlayList
+    private val _liveDataPlayNow = MutableLiveData<IPlayer.Track>()
+    override val liveDataPlayNow: LiveData<IPlayer.Track> get() = _liveDataPlayNow
+    private val _liveDataPlayList = MutableLiveData<List<IPlayer.Track>>()
+    override val liveDataPlayList: LiveData<List<IPlayer.Track>> get() = _liveDataPlayList
     override val trackDuration: Long get() = mediaController?.metadata?.duration ?: -1L
     override val currentPosition: Long get() = mediaController?.playbackState?.position ?: -1L
 
-    //    internal var mediaMetadataList: List<MediaMetadataCompat>? = null
-    override var playList: List<IPlayer.Item>? = null
+    override var playList: List<IPlayer.Track>? = null
         set(value) {
             field = value
             if (value?.contains(_liveDataPlayNow.value) == true) {
             } else {
                 _liveDataPlayNow.postValue(value?.getOrNull(0))
             }
-//            mediaMetadataList = value?.map { it.toMediaMetadata() }
             _liveDataPlayList.postValue(value)
 
             controls {
@@ -168,15 +168,10 @@ private class PlayerImpl(private val app: Application) : IPlayer {
          */
         override fun onConnected() {
             // Get a MediaController for the MediaSession.
-            mediaController = MediaControllerCompat(app, mediaBrowser.sessionToken).apply {
+            mediaController = MediaControllerCompat(appContext, mediaBrowser.sessionToken).apply {
                 registerCallback(MediaControllerCallback())
             }
-
-
             _liveDataPlayerState.postValue(State.STOP)
-//            if (playList != null) {
-//                mediaBrowser.subscribe(mediaBrowser.root, SubscriptionCallback0())
-//            }
         }
 
         /**
@@ -208,40 +203,13 @@ private class PlayerImpl(private val app: Application) : IPlayer {
             s?.takeIf { it != _liveDataPlayerState.value }?.also {
                 _liveDataPlayerState.postValue(it)
             }
-
-//            playbackState.postValue(state ?: EMPTY_PLAYBACK_STATE)
         }
 
         override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
-            Log.i("rom", "onMetadataChanged: ${metadata?.let {
-                mapOf(
-                    "id" to it.id,
-                    "downloadStatus" to it.downloadStatus,
-                    "mediaId" to it.description.mediaId,
-                    "year" to it.year,
-                    "date" to it.date,
-                    "albumArtist" to it.albumArtist,
-                    "album" to it.album,
-                    "author" to it.author,
-                    "compilation" to it.compilation,
-                    "composer" to it.composer,
-                    "displayDescription" to it.displayDescription,
-                    "displaySubtitle" to it.displaySubtitle,
-                    "genre" to it.genre,
-                    "writer" to it.writer,
-                    "duration" to it.duration,
-                    "fullDescription" to it.fullDescription
-                )
-            }}")
             val item = _liveDataPlayList.value?.find { it.id == metadata?.description?.mediaId }
             if (item != null && item != _liveDataPlayNow.value) {
                 _liveDataPlayNow.postValue(item)
             }
-        }
-
-        override fun onQueueChanged(queue: MutableList<MediaSessionCompat.QueueItem>?) {
-
-            Log.i("rom", "onQueueChanged: $queue")
         }
 
         /**
@@ -254,13 +222,5 @@ private class PlayerImpl(private val app: Application) : IPlayer {
             mediaBrowserConnectionCallback.onConnectionSuspended()
         }
     }
-
-//    internal val mediaItems
-//        get() = mediaMetadataList?.map {
-//            MediaBrowserCompat.MediaItem(
-//                it.description,
-//                it.flag
-//            )
-//        }
 }
 

@@ -1,92 +1,111 @@
-/*
- * Copyright 2017 Google Inc. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com.example.android.uamp
 
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
-import android.media.AudioManager
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.os.AsyncTask
 import android.os.Bundle
+import android.os.CountDownTimer
+import android.os.Looper
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.example.android.uamp.media.MusicService
-import com.example.android.uamp.utils.Event
-import com.example.android.uamp.utils.InjectorUtils
-import com.example.android.uamp.viewmodels.MainActivityViewModel
+import androidx.lifecycle.Observer
+import com.example.android.uamp.media.IPlayer
+import com.example.android.uamp.media.Player
+import java.net.URL
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var viewModel: MainActivityViewModel
+    private val log: TextView by lazy { findViewById<TextView>(R.id.logs) }
+    private lateinit var counter: CountDownTimer
+    private val player by lazy {
+        Player.init(application)
+        Player
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        // Since UAMP is a music player, the volume controls should adjust the music volume while
-        // in the app.
-        volumeControlStream = AudioManager.STREAM_MUSIC
-
-        viewModel = ViewModelProviders
-                .of(this, InjectorUtils.provideMainActivityViewModel(this))
-                .get(MainActivityViewModel::class.java)
-
-        /**
-         * Observe changes to the [MainActivityViewModel.rootMediaId]. When the app starts,
-         * and the UI connects to [MusicService], this will be updated and the app will show
-         * the initial list of media items.
-         */
-        viewModel.rootMediaId.observe(this,
-                Observer<String> { rootMediaId ->
-                    if (rootMediaId != null) {
-                        navigateToMediaItem(rootMediaId)
-                    }
-                })
-
-        /**
-         * Observe [MainActivityViewModel.navigateToMediaItem] for [Event]s indicating
-         * the user has requested to browse to a different [MediaItemData].
-         */
-        viewModel.navigateToMediaItem.observe(this, Observer {
-            it?.getContentIfNotHandled()?.let { mediaId ->
-                navigateToMediaItem(mediaId)
-            }
+        player.liveDataPlayerState.observe(this, Observer {
+            log.appendLine("State", it)
         })
+        player.liveDataPlayNow.observe(this, Observer {
+            log.appendLine("PlayNow", it)
+        })
+        player.liveDataPlayList.observe(this, Observer {
+            log.appendLine("PlayList", it.joinToString(separator = "\n\n", prefix = "\n"))
+        })
+        counter = object : CountDownTimer(Long.MAX_VALUE, 1000) {
+            override fun onFinish() {
+            }
+
+            override fun onTick(millisUntilFinished: Long) {
+                log.appendLine(
+                    "progress",
+                    "${player.currentPosition}/${player.trackDuration}"
+                )
+            }
+
+        }
+        counter.start()
+        if (player.playList == null) {
+            AsyncTask.THREAD_POOL_EXECUTOR.execute {
+                val artUri =
+                    "https://storage.googleapis.com/uamp/The_Kyoto_Connection_-_Wake_Up/art.jpg"
+                val art = BitmapFactory.decodeStream(URL(artUri).openStream())
+                player.playList = listOf(
+                    IPlayer.Track(
+                        "id_1",
+                        "https://storage.googleapis.com/uamp/The_Kyoto_Connection_-_Wake_Up/01_-_Intro_-_The_Way_Of_Waking_Up_feat_Alan_Watts.mp3",
+                        "Intro - The Way Of Waking Up (feat. Alan Watts)",
+                        "The Kyoto Connection",
+                        "Wake Up",
+                        artUri,
+                        (getDrawable(com.example.android.uamp.media.R.drawable.player_default_art) as BitmapDrawable).bitmap
+                    ),
+                    IPlayer.Track(
+                        "id_2",
+                        "https://storage.googleapis.com/uamp/The_Kyoto_Connection_-_Wake_Up/02_-_Geisha.mp3",
+                        "Geisha",
+                        "The Kyoto Connection",
+                        "Wake Up",
+                        artUri,
+                        art
+                    ),
+                    IPlayer.Track(
+                        "id_3",
+                        "https://storage.googleapis.com/uamp/The_Kyoto_Connection_-_Wake_Up/10_-_Wake_Up.mp3",
+                        "Wake Up",
+                        "The Kyoto Connection",
+                        "Wake Up",
+                        artUri,
+                        art
+                    )
+                )
+            }
+        }
+        toggle.setOnClickListener { player.togglePlayPause() }
+        prev.setOnClickListener { player.prev() }
+        next.setOnClickListener { player.next() }
+        stop.setOnClickListener { player.stop() }
+        revert.setOnClickListener { player.playList = player.playList?.reversed() }
     }
 
-    private fun navigateToMediaItem(mediaId: String) {
-        var fragment: MediaItemFragment? = getBrowseFragment(mediaId)
+    override fun onDestroy() {
+        counter.cancel()
+        super.onDestroy()
+    }
 
-        if (fragment == null) {
-            fragment = MediaItemFragment.newInstance(mediaId)
-
-            supportFragmentManager.beginTransaction()
-                    .apply {
-                        replace(R.id.browseFragment, fragment, mediaId)
-
-                        // If this is not the top level media (root), we add it to the fragment
-                        // back stack, so that actionbar toggle and Back will work appropriately:
-                        if (!isRootId(mediaId)) {
-                            addToBackStack(null)
-                        }
-                    }
-                    .commit()
+    private fun TextView.appendLine(key: String? = null, value: Any? = null) {
+        val runnable = Runnable {
+            val line = (key?.plus(": ") ?: "").plus(value.toString())
+            append("\n$line")
+            scrollView.scrollBy(0, 100)
+        }
+        if (Looper.getMainLooper().thread == Thread.currentThread()) {
+            runnable.run()
+        } else {
+            post(runnable)
         }
     }
-
-    private fun isRootId(mediaId: String) = mediaId == viewModel.rootMediaId.value
-
-    private fun getBrowseFragment(mediaId: String): MediaItemFragment? {
-        return supportFragmentManager.findFragmentByTag(mediaId) as MediaItemFragment?
-    }
 }
+
+
