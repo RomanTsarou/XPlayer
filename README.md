@@ -1,50 +1,38 @@
-Universal Android Music Player Sample
-=====================================
+# XPlayer
+forked from [googlesamples/android-UniversalMusicPlayer](https://github.com/googlesamples/android-UniversalMusicPlayer)
 
-The goal of this sample is to show how to implement an audio media app that works
-across multiple form factors and provide a consistent user experience
-on Android phones, tablets, Android Auto, Android Wear, Android TV, Google Cast devices,
-and with the Google Assistant.
+[![Release](https://jitpack.io/v/RomanTsarou/XPlayer.svg)](https://jitpack.io/#RomanTsarou/XPlayer)
 
 
-Pre-requisites
---------------
-
-- Android Studio 3.x
-
-Getting Started
----------------
-
-This sample uses the Gradle build system. To build this project, use the
-"gradlew build" command or use "Import Project" in Android Studio.
-
-Support
--------
-
-- Google+ Community: https://plus.google.com/communities/105153134372062985968
-- Stack Overflow: http://stackoverflow.com/questions/tagged/android
-
-If you've found an error in this sample, please
-[file an issue](https://github.com/googlesamples/android-UniversalMusicPlayer/issues)
-
-Patches are encouraged, and may be submitted by forking this project and
-submitting a pull request through GitHub. Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more
-details.
-
-Music
------
-
-Music provided by the [Free Music Archive](http://freemusicarchive.org/).
-
-- [Irsen's Tale](http://freemusicarchive.org/music/Kai_Engel/Irsens_Tale/) by
-[Kai Engel](http://freemusicarchive.org/music/Kai_Engel/).
-- [Wake Up](http://freemusicarchive.org/music/The_Kyoto_Connection/Wake_Up_1957/) by
-[The Kyoto Connection](http://freemusicarchive.org/music/The_Kyoto_Connection/).
-
+#### Android music player library for [androidx](https://developer.android.com/topic/libraries/support-library/androidx-overview) projects, with simlpe API:
+```
+    val liveDataPlayerState: LiveData<State>
+    val liveDataPlayNow: LiveData<Track>
+    val liveDataPlayList: LiveData<List<Track>>
+    val trackDuration: Long
+    val currentPosition: Long
+    var playList: List<Track>?
+    fun play()
+    fun start(mediaId: String)
+    fun pause()
+    fun stop()
+    fun next()
+    fun prev()
+    fun togglePlayPause()
+    fun seekTo(millis: Long)
+```
+#### Sample use(Kotlin):
+```
+Player.init(context)
+...
+Player.playList = myPlayList
+...
+Player.play()
+```
 License
 -------
 
-Copyright 2017 Google Inc.
+Copyright 2018 Roman Tsarou
 
 Licensed to the Apache Software Foundation (ASF) under one or more contributor
 license agreements.  See the NOTICE file distributed with this work for
