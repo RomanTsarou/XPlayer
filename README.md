@@ -5,7 +5,7 @@ forked from [googlesamples/android-UniversalMusicPlayer](https://github.com/goog
 
 
 #### Android music player library for [androidx](https://developer.android.com/topic/libraries/support-library/androidx-overview) projects, with simlpe API:
-```
+```kotlin
     val liveDataPlayerState: LiveData<State>
     val liveDataPlayNow: LiveData<Track>
     val liveDataPlayList: LiveData<List<Track>>

@@ -64,8 +64,12 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     override val liveDataPlayNow: LiveData<IPlayer.Track> get() = _liveDataPlayNow
     private val _liveDataPlayList = MutableLiveData<List<IPlayer.Track>>()
     override val liveDataPlayList: LiveData<List<IPlayer.Track>> get() = _liveDataPlayList
-    override val trackDuration: Long get() = mediaController?.metadata?.duration ?: -1L
-    override val currentPosition: Long get() = mediaController?.playbackState?.position ?: -1L
+    override val trackDuration: Long
+        get() = if (_liveDataPlayerState.value == State.STOP) -1L else mediaController?.metadata?.duration
+                ?: -1L
+    override val currentPosition: Long
+        get() = if (_liveDataPlayerState.value == State.STOP) 0L else mediaController?.playbackState?.position
+                ?: 0L
 
     override var playList: List<IPlayer.Track>? = null
         set(value) {
@@ -99,7 +103,7 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     override fun play() {
         controls {
             if (state == State.STOP) {
-                val mediaId = playList?.getOrNull(0)?.id
+                val mediaId = liveDataPlayNow.value?.id ?: playList?.getOrNull(0)?.id
                 if (mediaId != null) {
                     start(mediaId)
                 } else {
@@ -132,13 +136,31 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     override fun next() {
         controls {
             skipToNext()
-        }
+        } ?: {
+            playList?.takeIf { it.size > 1 }?.also { list ->
+                liveDataPlayNow.value?.also { track ->
+                    val next = list.indexOf(track).takeIf { i -> i != -1 }
+                        ?.let { if (it == list.size - 1) 0 else it + 1 }
+                        ?.let { list[it] }
+                    _liveDataPlayNow.postValue(next)
+                }
+            }
+        }()
     }
 
     override fun prev() {
         controls {
             skipToPrevious()
-        }
+        } ?: {
+            playList?.takeIf { it.size > 1 }?.also { list ->
+                liveDataPlayNow.value?.also { track ->
+                    val prev = list.indexOf(track).takeIf { i -> i != -1 }
+                        ?.let { if (it == 0) list.size - 1 else it - 1 }
+                        ?.let { list[it] }
+                    _liveDataPlayNow.postValue(prev)
+                }
+            }
+        }()
     }
 
     override fun togglePlayPause() {
@@ -155,10 +177,13 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
         }
     }
 
-    private fun controls(body: MediaControllerCompat.TransportControls.() -> Unit) {
-        mediaController?.also {
+    private fun controls(body: MediaControllerCompat.TransportControls.() -> Unit): MediaControllerCompat? {
+        return mediaController?.also {
             body(it.transportControls)
-        } ?: Log.w("Player", "mediaController not Initialized")
+        } ?: {
+            Log.w("Player", "mediaController not Initialized")
+            null
+        }()
     }
 
     private inner class MediaBrowserConnectionCallback : MediaBrowserCompat.ConnectionCallback() {

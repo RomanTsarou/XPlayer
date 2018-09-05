@@ -66,8 +66,6 @@ class UampPlaybackPreparer(
      * [MediaSessionCompat.Callback.onPrepareFromMediaId].
      */
     override fun onPrepareFromMediaId(mediaId: String?, extras: Bundle?) {
-        Log.v("rom", "onPrepareFromMediaId: $mediaId")
-//        musicSource.whenReady {
         val metadataList =
             com.example.android.uamp.media.Player.playList?.map { it.toMediaMetadata() }
                     ?: emptyList()
@@ -80,7 +78,7 @@ class UampPlaybackPreparer(
             // TODO: Notify caller of the error.
         } else {
             val mediaSource = metadataList.toMediaSource(dataSourceFactory)
-
+//            (mediaSource as ConcatenatingMediaSource).
             // Since the playlist was probably based on some ordering (such as tracks
             // on an album), find which window index to play first so that the song the
             // user actually wants to hear plays first.
@@ -91,7 +89,6 @@ class UampPlaybackPreparer(
             exoPlayer.prepare(mediaSource)
             exoPlayer.seekTo(initialWindowIndex, seekTo)
         }
-//        }
     }
 
     /**

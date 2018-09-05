@@ -94,7 +94,9 @@ class MusicService : MediaBrowserServiceCompat() {
                 DefaultRenderersFactory(this),
                 DefaultTrackSelector(),
                 DefaultLoadControl()
-            )
+            ).apply {
+                repeatMode = Player.REPEAT_MODE_ALL
+            }
         )
     }
 
