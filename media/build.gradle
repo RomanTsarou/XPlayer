@@ -19,7 +19,7 @@ plugins {
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-def build = 2
+def build = 3
 group = 'com.github.RomanTsarou'
 version = "0.0.$build"
 

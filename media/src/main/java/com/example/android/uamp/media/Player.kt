@@ -74,24 +74,29 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     override var playList: List<IPlayer.Track>? = null
         set(value) {
             field = value
-            if (value?.contains(_liveDataPlayNow.value) == true) {
+            val playNowId = _liveDataPlayNow.value?.id
+            val playNowFromNewPlaylist = value?.find { it.id == playNowId }
+            if (playNowFromNewPlaylist != null) {
+                if (playNowFromNewPlaylist != _liveDataPlayNow.value) {
+                    _liveDataPlayNow.postValue(playNowFromNewPlaylist)
+                }
             } else {
                 _liveDataPlayNow.postValue(value?.getOrNull(0))
             }
             _liveDataPlayList.postValue(value)
 
             controls {
-                val playNowId = _liveDataPlayNow.value?.id
-                if (playNowId != null) {
+                val playNowIdNew = _liveDataPlayNow.value?.id
+                if (playNowIdNew != null) {
                     val extra = if (state == State.STOP) null else Bundle().apply {
                         putBoolean("needSeekTo", true)
                     }
                     when (state) {
                         State.PLAY -> {
-                            playFromMediaId(playNowId, extra)
+                            playFromMediaId(playNowIdNew, extra)
                         }
-                        else -> {
-                            prepareFromMediaId(playNowId, extra)
+                        State.PAUSE -> {
+                            prepareFromMediaId(playNowIdNew, extra)
                         }
                     }
                 } else {
@@ -134,9 +139,12 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     }
 
     override fun next() {
-        controls {
-            skipToNext()
-        } ?: {
+        val state = _liveDataPlayerState.value ?: State.PREPARING
+        if (state == State.PLAY || state == State.PAUSE) {
+            controls {
+                skipToNext()
+            }
+        } else {
             playList?.takeIf { it.size > 1 }?.also { list ->
                 liveDataPlayNow.value?.also { track ->
                     val next = list.indexOf(track).takeIf { i -> i != -1 }
@@ -145,13 +153,16 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
                     _liveDataPlayNow.postValue(next)
                 }
             }
-        }()
+        }
     }
 
     override fun prev() {
-        controls {
-            skipToPrevious()
-        } ?: {
+        val state = _liveDataPlayerState.value ?: State.PREPARING
+        if (state == State.PLAY || state == State.PAUSE) {
+            controls {
+                skipToPrevious()
+            }
+        } else {
             playList?.takeIf { it.size > 1 }?.also { list ->
                 liveDataPlayNow.value?.also { track ->
                     val prev = list.indexOf(track).takeIf { i -> i != -1 }
@@ -160,7 +171,7 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
                     _liveDataPlayNow.postValue(prev)
                 }
             }
-        }()
+        }
     }
 
     override fun togglePlayPause() {
@@ -177,13 +188,10 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
         }
     }
 
-    private fun controls(body: MediaControllerCompat.TransportControls.() -> Unit): MediaControllerCompat? {
-        return mediaController?.also {
+    private fun controls(body: MediaControllerCompat.TransportControls.() -> Unit) {
+        mediaController?.also {
             body(it.transportControls)
-        } ?: {
-            Log.w("Player", "mediaController not Initialized")
-            null
-        }()
+        }
     }
 
     private inner class MediaBrowserConnectionCallback : MediaBrowserCompat.ConnectionCallback() {
@@ -217,7 +225,6 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     private inner class MediaControllerCallback : MediaControllerCompat.Callback() {
 
         override fun onPlaybackStateChanged(state: PlaybackStateCompat) {
-            Log.i("rom", "onPlaybackStateChanged: ${state.position}")
             val s = when (state.state) {
                 PlaybackStateCompat.STATE_ERROR -> State.ERROR
                 PlaybackStateCompat.STATE_PAUSED -> State.PAUSE
