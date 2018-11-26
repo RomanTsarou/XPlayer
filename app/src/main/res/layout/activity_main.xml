@@ -46,6 +46,9 @@
         <Button
             android:id="@+id/revert"
             android:text="revert" />
+        <Button
+            android:id="@+id/speed"
+            android:text="speed*2" />
     </GridLayout>
 
 </LinearLayout>

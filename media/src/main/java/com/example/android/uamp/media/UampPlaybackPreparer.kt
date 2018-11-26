@@ -27,6 +27,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import com.example.android.uamp.media.extensions.*
 import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.PlaybackParameters
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.upstream.DataSource
@@ -39,7 +40,6 @@ class UampPlaybackPreparer(
     private val exoPlayer: ExoPlayer,
     private val dataSourceFactory: DataSource.Factory
 ) : MediaSessionConnector.PlaybackPreparer {
-
     /**
      * UAMP supports preparing (and playing) from search, as well as media ID, so those
      * capabilities are declared here.
@@ -68,7 +68,7 @@ class UampPlaybackPreparer(
     override fun onPrepareFromMediaId(mediaId: String?, extras: Bundle?) {
         val metadataList =
             com.example.android.uamp.media.Player.playList?.map { it.toMediaMetadata() }
-                    ?: emptyList()
+                ?: emptyList()
         val itemToPlay: MediaMetadataCompat? = metadataList.find { item ->
             item.id == mediaId
         }
@@ -89,6 +89,10 @@ class UampPlaybackPreparer(
             exoPlayer.prepare(mediaSource)
             exoPlayer.seekTo(initialWindowIndex, seekTo)
         }
+    }
+
+    private fun setSpeed(speed: Float) {
+        exoPlayer.playbackParameters = PlaybackParameters(speed)
     }
 
     /**
@@ -115,16 +119,20 @@ class UampPlaybackPreparer(
 
     override fun onPrepareFromUri(uri: Uri?, extras: Bundle?) = Unit
 
-    override fun getCommands(): Array<String>? = null
+    override fun getCommands(): Array<String>? = arrayOf(COMMAND_SPEED)
 
     override fun onCommand(
         player: Player?,
         command: String?,
         extras: Bundle?,
         cb: ResultReceiver?
-    ) = Unit
+    ) {
+        when (command) {
+            COMMAND_SPEED -> setSpeed(extras?.getFloat(COMMAND_SPEED, 1F) ?: 1F)
+        }
+    }
 
-//    /**
+    //    /**
 //     * Builds a playlist based on a [MediaMetadataCompat].
 //     *
 //     * TODO: Support building a playlist by artist, genre, etc...
@@ -134,6 +142,9 @@ class UampPlaybackPreparer(
 //     */
 //    private fun buildPlaylist(item: MediaMetadataCompat): List<MediaMetadataCompat> =
 //            musicSource.filter { it.album == item.album }.sortedBy { it.trackNumber }
+    companion object {
+        const val COMMAND_SPEED = "speed"
+    }
 }
 
 private const val TAG = "MediaSessionHelper"

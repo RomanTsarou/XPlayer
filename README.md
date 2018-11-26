@@ -11,6 +11,7 @@ forked from [googlesamples/android-UniversalMusicPlayer](https://github.com/goog
     val liveDataPlayList: LiveData<List<Track>>
     val trackDuration: Long
     val currentPosition: Long
+    var speed: Float
     var playList: List<Track>?
     fun play()
     fun start(mediaId: String)

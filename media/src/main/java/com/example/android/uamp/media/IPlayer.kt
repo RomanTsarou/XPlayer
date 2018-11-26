@@ -12,6 +12,7 @@ interface IPlayer {
     val liveDataPlayList: LiveData<List<Track>>
     val trackDuration: Long
     val currentPosition: Long
+    var speed: Float
     var playList: List<Track>?
     fun play()
     fun start(mediaId: String)

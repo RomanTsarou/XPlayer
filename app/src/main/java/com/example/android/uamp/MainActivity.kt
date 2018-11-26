@@ -41,7 +41,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTick(millisUntilFinished: Long) {
                 log.appendLine(
                     "progress",
-                    "${player.currentPosition}/${player.trackDuration}"
+                    "${player.currentPosition}/${player.trackDuration}, speed=${player.speed}"
                 )
             }
 
@@ -87,6 +87,7 @@ class MainActivity : AppCompatActivity() {
         prev.setOnClickListener { player.prev() }
         next.setOnClickListener { player.next() }
         stop.setOnClickListener { player.stop() }
+        speed.setOnClickListener { player.speed = if (player.speed == 1F) 2F else 1f }
         revert.setOnClickListener { player.playList = player.playList?.reversed() }
     }
 

@@ -32,6 +32,11 @@ object Player : IPlayer {
     override val liveDataPlayList get() = playerImpl.liveDataPlayList
     override val trackDuration get() = playerImpl.trackDuration
     override val currentPosition get() = playerImpl.currentPosition
+    override var speed
+        get() = playerImpl.speed
+        set(value) {
+            playerImpl.speed = value
+        }
     override var playList
         get() = playerImpl.playList
         set(value) {
@@ -66,10 +71,21 @@ private class PlayerImpl(private val appContext: Context) : IPlayer {
     override val liveDataPlayList: LiveData<List<IPlayer.Track>> get() = _liveDataPlayList
     override val trackDuration: Long
         get() = if (_liveDataPlayerState.value == State.STOP) -1L else mediaController?.metadata?.duration
-                ?: -1L
+            ?: -1L
     override val currentPosition: Long
         get() = if (_liveDataPlayerState.value == State.STOP) 0L else mediaController?.playbackState?.position
-                ?: 0L
+            ?: 0L
+    private var _speed = 1F
+    override var speed: Float
+        get() = _speed
+        set(value) {
+            mediaController?.apply {
+                _speed = value
+                val bundle = Bundle()
+                bundle.putFloat(UampPlaybackPreparer.COMMAND_SPEED, value)
+                sendCommand(UampPlaybackPreparer.COMMAND_SPEED, bundle, null)
+            }
+        }
 
     override var playList: List<IPlayer.Track>? = null
         set(value) {
