@@ -19,7 +19,7 @@ plugins {
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-def build = 3
+def build = 4
 group = 'com.github.RomanTsarou'
 version = "0.0.$build"
 
@@ -46,16 +46,16 @@ android {
 
 dependencies {
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compileOnly 'androidx.lifecycle:lifecycle-livedata:2.0.0-rc01'
+    compileOnly 'androidx.lifecycle:lifecycle-livedata:2.0.0'
 
-    api 'androidx.media:media:1.0.0-rc02'
+    api 'androidx.media:media:1.0.0'
 
     // ExoPlayer dependencies
     api "com.google.android.exoplayer:exoplayer-core:$exoplayer_version"
     api "com.google.android.exoplayer:extension-mediasession:$exoplayer_version"
 
     // Testing
-    androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
+    androidTestImplementation 'androidx.test:runner:1.1.0'
 }
 
 // build a jar with source files
