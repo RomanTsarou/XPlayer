@@ -19,7 +19,7 @@ plugins {
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
-def build = 4
+def build = 5
 group = 'com.github.RomanTsarou'
 version = "0.0.$build"
 
@@ -48,20 +48,20 @@ dependencies {
     compileOnly "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     compileOnly 'androidx.lifecycle:lifecycle-livedata:2.0.0'
 
-    api 'androidx.media:media:1.0.0'
+    api 'androidx.media:media:1.0.1'
 
     // ExoPlayer dependencies
     api "com.google.android.exoplayer:exoplayer-core:$exoplayer_version"
     api "com.google.android.exoplayer:extension-mediasession:$exoplayer_version"
 
     // Testing
-    androidTestImplementation 'androidx.test:runner:1.1.0'
+    androidTestImplementation 'androidx.test:runner:1.1.1'
 }
 
 // build a jar with source files
 task sourcesJar(type: Jar) {
     from android.sourceSets.main.java.srcDirs
-    classifier = 'sources'
+    archiveClassifier.set('sources')
 }
 
 task javadoc(type: Javadoc) {
@@ -73,7 +73,7 @@ task javadoc(type: Javadoc) {
 
 // build a jar with javadoc
 task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
+    archiveClassifier.set('javadoc')
     from javadoc.destinationDir
 }
 

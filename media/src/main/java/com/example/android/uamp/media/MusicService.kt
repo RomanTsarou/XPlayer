@@ -34,14 +34,13 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.core.app.NotificationManagerCompat
-import androidx.media.AudioAttributesCompat
+import androidx.core.content.ContextCompat
 import androidx.media.MediaBrowserServiceCompat
-import com.example.android.uamp.media.audiofocus.AudioFocusExoPlayerDecorator
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 
@@ -79,25 +78,17 @@ class MusicService : MediaBrowserServiceCompat() {
 //    private val remoteJsonSource: Uri =
 //            Uri.parse("https://storage.googleapis.com/uamp/catalog.json")
 
-    private val audioAttributes = AudioAttributesCompat.Builder()
-        .setContentType(AudioAttributesCompat.CONTENT_TYPE_MUSIC)
-        .setUsage(AudioAttributesCompat.USAGE_MEDIA)
+    private val _audioAttributes = AudioAttributes.Builder()
+        .setContentType(C.CONTENT_TYPE_MUSIC)
+        .setUsage(C.USAGE_MEDIA)
         .build()
 
     // Wrap a SimpleExoPlayer with a decorator to handle audio focus for us.
     private val exoPlayer: ExoPlayer by lazy {
-        val audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        AudioFocusExoPlayerDecorator(
-            audioAttributes,
-            audioManager,
-            ExoPlayerFactory.newSimpleInstance(
-                DefaultRenderersFactory(this),
-                DefaultTrackSelector(),
-                DefaultLoadControl()
-            ).apply {
-                repeatMode = Player.REPEAT_MODE_ALL
-            }
-        )
+        ExoPlayerFactory.newSimpleInstance(this).apply {
+            setAudioAttributes(_audioAttributes, true)
+            repeatMode = Player.REPEAT_MODE_ALL
+        }
     }
 
     override fun onCreate() {
@@ -140,7 +131,7 @@ class MusicService : MediaBrowserServiceCompat() {
         notificationManager = NotificationManagerCompat.from(this)
 
         becomingNoisyReceiver =
-                BecomingNoisyReceiver(context = this, sessionToken = mediaSession.sessionToken)
+            BecomingNoisyReceiver(context = this, sessionToken = mediaSession.sessionToken)
 
 //        mediaSource = JsonSource(context = this, source = remoteJsonSource)
 //        mediaSource = com.example.android.uamp.media.Player.instance.mediaSource
@@ -272,16 +263,21 @@ class MusicService : MediaBrowserServiceCompat() {
      */
     private inner class MediaControllerCallback : MediaControllerCompat.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
-            mediaController.playbackState?.let { updateNotification(it) }
+            mediaController.playbackState?.also { updateNotification(it) }
         }
 
+
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
-            state?.let { updateNotification(it) }
+            state?.also { updateNotification(it) }
         }
 
         private fun updateNotification(state: PlaybackStateCompat) {
             val updatedState = state.state
             if (mediaController.metadata == null) {
+                if (updatedState == PlaybackStateCompat.STATE_NONE) {//stop state
+                    isForegroundService = false
+                    removeNowPlayingNotification()
+                }
                 return
             }
 
@@ -303,7 +299,10 @@ class MusicService : MediaBrowserServiceCompat() {
                      * state itself, even though the name sounds like it."
                      */
                     if (!isForegroundService) {
-                        startService(Intent(applicationContext, this@MusicService.javaClass))
+                        ContextCompat.startForegroundService(
+                            this@MusicService,
+                            Intent(applicationContext, this@MusicService.javaClass)
+                        )
                         startForeground(NOW_PLAYING_NOTIFICATION, notification)
                         isForegroundService = true
                     } else if (notification != null) {
